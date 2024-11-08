@@ -5,75 +5,32 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from sqlalchemy.orm import Session
+from src.exceptions import ValidationError  # Add this import
+
 class ProjectService:
-    """Core business logic implementation"""
-    
-    def __init__(self, engine):
+    def __init__(self, engine=None):
+        """Initialize project service"""
         self.engine = engine
-        
-    async def process_project_data(self, project_id: str) -> Dict[str, Any]:
-        """Process project data with SwarmRAG insights"""
+
+    async def validate_project(self, project_data: dict) -> dict:
+        """Validate project data"""
         try:
-            # 1. Validate project existence
-            project_exists = await self.check_project_id(project_id)
-            
-            # 2. Get service area details
-            service_area = await self.get_service_area(project_id)
-            
-            # 3. Apply business rules from SwarmRAG analysis
-            validated_data = self.apply_business_rules(service_area)
-            
-            # 4. Update with new requirements
-            await self.update_service_area(project_id, validated_data)
-            
-            return {
-                "status": "success",
-                "project_id": project_id,
-                "processed_data": validated_data
-            }
-            
-        except Exception as e:
-            logger.error(f"Error processing project {project_id}: {str(e)}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
-    
-    async def get_project(self, project_id: str) -> Optional[Project]:
-        """Get project details"""
-        try:
-            with self.engine.connect() as conn:
-                result = conn.execute(
-                    text("EXEC usp_CS_EXP_Check_ProjectID @ProjectID = :project_id"),
-                    {"project_id": project_id}
-                ).scalar()
+            # Basic validation
+            if not project_data.get('project_id') or not project_data.get('region'):
+                raise ValidationError("Missing required fields")
                 
-                if result:
-                    # Fetch additional project details
-                    pass
-                return None
+            # Project ID format validation
+            if not project_data['project_id'].startswith('CACAI'):
+                raise ValidationError("Invalid project ID format")
+                
+            # Region validation
+            valid_regions = ['West', 'East', 'North', 'South']
+            if project_data['region'] not in valid_regions:
+                raise ValidationError("Invalid region")
+                
+            return {'is_valid': True}
+        except ValidationError:
+            raise
         except Exception as e:
-            logger.error(f"Error fetching project: {str(e)}")
-            return None
-    
-    async def update_service_area(self, service_area: ServiceArea) -> bool:
-        """Update project service area"""
-        try:
-            with self.engine.connect() as conn:
-                conn.execute(
-                    text("""
-                        EXEC usp_CS_EXP_Project_ServiceArea_Edit 
-                        @ProjID = :proj_id, 
-                        @Mileage = :mileage, 
-                        @Flag = :flag
-                    """),
-                    {
-                        "proj_id": service_area.project_id,
-                        "mileage": service_area.mileage,
-                        "flag": 1
-                    }
-                )
-                return True
-        except Exception as e:
-            logger.error(f"Error updating service area: {str(e)}")
-            return False 
+            raise ValidationError(f"Validation failed: {str(e)}")

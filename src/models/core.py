@@ -1,7 +1,10 @@
 from datetime import datetime
-from sqlalchemy import Enum, ForeignKey, Index
+from sqlalchemy import Column, DateTime, String, Integer, Enum, Index
 from sqlalchemy.orm import relationship, validates
+from sqlalchemy.ext.declarative import declarative_base
 from src.exceptions import ValidationError
+
+db = declarative_base()
 
 class BaseModel(db.Model):
     """Base model with common fields"""

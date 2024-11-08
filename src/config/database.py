@@ -1,4 +1,8 @@
 from urllib.parse import quote_plus
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from typing import Generator
+import os
 
 class DatabaseConfig:
     """SQL Server configuration"""
@@ -46,3 +50,28 @@ class Config:
         'pool_timeout': 30,
         'pool_recycle': 1800
     } 
+
+def get_db_url() -> str:
+    """Get database URL from environment or config"""
+    return os.getenv(
+        'DATABASE_URL',
+        'sqlite:///./test.db'  # Default to SQLite for testing
+    )
+
+def get_engine():
+    """Create SQLAlchemy engine"""
+    return create_engine(get_db_url())
+
+def get_session() -> Generator:
+    """Get database session"""
+    SessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=get_engine()
+    )
+    
+    try:
+        db = SessionLocal()
+        yield db
+    finally:
+        db.close()
