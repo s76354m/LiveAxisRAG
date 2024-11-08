@@ -1,20 +1,25 @@
 import time
-from functools import wraps
-from typing import Callable, Any, Dict
-import logging
+from typing import Dict
+from contextlib import contextmanager
 
-logger = logging.getLogger(__name__)
+class PerformanceMonitor:
+    def __init__(self):
+        self.metrics: Dict[str, float] = {}
 
-def measure_time(func: Callable) -> Callable:
-    """Decorator to measure procedure execution time"""
-    @wraps(func)
-    def wrapper(*args, **kwargs) -> Dict[str, Any]:
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        execution_time = time.time() - start_time
-        
-        if isinstance(result, dict):
-            result['execution_time'] = f"{execution_time:.3f}s"
-        
-        return result
-    return wrapper 
+    @contextmanager
+    def measure(self, name: str):
+        """Measure execution time of a code block"""
+        start = time.time()
+        try:
+            yield
+        finally:
+            end = time.time()
+            self.metrics[name] = end - start
+
+    def get_metric(self, name: str) -> float:
+        """Get metric by name"""
+        return self.metrics.get(name, 0.0)
+
+    def clear_metrics(self):
+        """Clear all metrics"""
+        self.metrics.clear()

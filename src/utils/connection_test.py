@@ -1,60 +1,52 @@
-from contextlib import contextmanager
-from typing import Generator, List
+from typing import Dict, Any
+from sqlalchemy.engine import Engine
+from sqlalchemy import text
 import time
 
 class ConnectionTester:
-    """Connection testing utility for ndar database"""
-    
-    def __init__(self, db_engine, config):
-        self.engine = db_engine
-        self.config = config
-    
-    def run_connection_tests(self) -> Dict[str, Any]:
-        """Run comprehensive connection tests"""
-        results = {
-            'basic_connection': self.test_basic_connection(),
-            'connection_pool': self.test_connection_pool(),
-            'transaction_handling': self.test_transaction(),
-            'stored_proc_access': self.test_stored_procedures(),
-            'performance': self.test_connection_performance()
-        }
-        return results
-    
-    def test_basic_connection(self) -> Dict[str, Any]:
-        """Test basic database connectivity"""
-        start_time = time.time()
+    def __init__(self, engine: Engine):
+        self.engine = engine
+
+    async def test_connection(self) -> Dict[str, Any]:
+        """Test database connection and measure latency"""
         try:
+            start_time = time.perf_counter()
             with self.engine.connect() as conn:
-                conn.execute(text("SELECT @@VERSION"))
-                return {
-                    'success': True,
-                    'latency': time.time() - start_time,
-                    'message': 'Connection successful'
-                }
+                conn.execute(text("SELECT 1"))
+            latency = time.perf_counter() - start_time
+            
+            return {
+                "status": "success",
+                "latency": latency,
+                "timestamp": time.time()
+            }
         except Exception as e:
             return {
-                'success': False,
-                'error': str(e),
-                'message': 'Connection failed'
+                "status": "error",
+                "error": str(e),
+                "timestamp": time.time()
             }
-    
-    def test_stored_procedures(self) -> Dict[str, List[str]]:
-        """Test stored procedure accessibility"""
-        accessible_procs = []
-        failed_procs = []
-        
-        for proc in DatabaseVerifier.REQUIRED_PROCEDURES:
-            try:
+
+    def run_connection_tests(self) -> Dict[str, Any]:
+        """Run a series of connection tests"""
+        try:
+            results = []
+            for _ in range(3):
                 with self.engine.connect() as conn:
-                    # Try to get procedure definition
-                    conn.execute(text(
-                        f"SELECT OBJECT_DEFINITION(OBJECT_ID('{proc}'))"
-                    ))
-                    accessible_procs.append(proc)
-            except Exception:
-                failed_procs.append(proc)
-        
-        return {
-            'accessible': accessible_procs,
-            'failed': failed_procs
-        } 
+                    start = time.perf_counter()
+                    conn.execute(text("SELECT 1"))
+                    end = time.perf_counter()
+                    results.append(end - start)
+            
+            return {
+                "status": "success",
+                "avg_latency": sum(results) / len(results),
+                "min_latency": min(results),
+                "max_latency": max(results),
+                "tests_run": len(results)
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e)
+            }

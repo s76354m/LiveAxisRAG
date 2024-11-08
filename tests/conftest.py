@@ -6,7 +6,8 @@ from src.models import Base
 from src.services.validation_service import ValidationService
 from src.services.business_rules import BusinessRulesEngine
 from src.api.main import app
-from src.services.project_service import ProjectService
+from src.utils.database import DatabaseManager
+from src.config.config_manager import ConfigManager
 
 @pytest.fixture
 def client():
@@ -60,3 +61,7 @@ def sample_service_area():
 def project_service(test_db):
     """Provide project service instance"""
     return ProjectService(engine=test_db.bind)
+
+@pytest.fixture(scope="session")
+def db_manager(config):
+    return DatabaseManager(config.get_database_url())

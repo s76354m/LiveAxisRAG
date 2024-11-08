@@ -1,26 +1,41 @@
-from typing import List, Dict, Any
-from sqlalchemy import text
+from typing import Any, Dict, List
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+from sqlalchemy.pool import QueuePool
+from contextlib import contextmanager
+import logging
 
-class StoredProcedure:
-    """Utility for executing stored procedures"""
+logger = logging.getLogger(__name__)
+
+class DatabaseManager:
+    def __init__(self, connection_string: str):
+        self.engine = create_engine(
+            connection_string,
+            poolclass=QueuePool,
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30
+        )
     
-    def __init__(self, db_session):
-        self.session = db_session
-    
-    def execute(self, proc_name: str, params: Dict[str, Any] = None) -> List[Dict]:
-        """Execute stored procedure with parameters"""
+    @contextmanager
+    def get_connection(self):
+        """Provide managed database connection"""
+        conn = self.engine.connect()
         try:
-            result = self.session.execute(
-                text(f"EXEC {proc_name} {self._format_params(params)}"),
-                params or {}
-            )
-            return [dict(row) for row in result]
+            yield conn
+            conn.commit()
         except Exception as e:
-            print(f"Error executing {proc_name}: {str(e)}")
+            conn.rollback()
+            logger.error(f"Database operation failed: {str(e)}")
             raise
+        finally:
+            conn.close()
     
-    def _format_params(self, params: Dict[str, Any]) -> str:
-        """Format stored procedure parameters"""
-        if not params:
-            return ""
-        return " ".join([f"@{k}=:{k}," for k in params.keys()])[:-1] 
+    def execute_parameterized_query(
+        self, 
+        query: str, 
+        params: Dict[str, Any]
+    ) -> Any:
+        """Execute parameterized query safely"""
+        with self.get_connection() as conn:
+            return conn.execute(text(query), params)

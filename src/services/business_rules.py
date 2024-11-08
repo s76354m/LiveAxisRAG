@@ -1,74 +1,30 @@
-from typing import Dict, Any, List
+from typing import Dict, Any
 from src.exceptions import BusinessRuleError
-import logging
-
-logger = logging.getLogger(__name__)
 
 class BusinessRulesEngine:
-    """Business rules processing engine"""
-    
-    def __init__(self):
-        self.state_rules = {
-            'CA': {
-                'min_mileage': 0.1,
-                'max_mileage': 100.0,
-                'requires_county': True
-            },
-            'TX': {
-                'min_mileage': 0.1,
-                'max_mileage': 150.0,
-                'requires_county': True
-            },
-            'NY': {
-                'min_mileage': 0.1,
-                'max_mileage': 75.0,
-                'requires_county': True
-            }
-        }
-    
-    def apply_service_area_rules(self, 
-                               service_area: Dict[str, Any]) -> Dict[str, Any]:
-        """Apply business rules to service area"""
-        state = service_area.get('state')
-        if not state or state not in self.state_rules:
-            raise BusinessRuleError(f"Invalid state: {state}")
+    def validate(self, data: Dict[str, Any]) -> bool:
+        """Validate data against business rules"""
+        try:
+            # Validate project ID format
+            if not data.get("project_id", "").startswith("CACAI"):
+                raise BusinessRuleError("Invalid project ID format")
             
-        rules = self.state_rules[state]
-        
-        # Validate mileage
-        mileage = service_area.get('mileage', 0)
-        if not (rules['min_mileage'] <= mileage <= rules['max_mileage']):
-            raise BusinessRuleError(
-                f"Mileage must be between "
-                f"{rules['min_mileage']} and {rules['max_mileage']}"
-            )
-        
-        # Check county requirement
-        if rules['requires_county'] and not service_area.get('county'):
-            raise BusinessRuleError(f"County is required for state: {state}")
-        
-        return service_area
-    
-    def calculate_adjusted_mileage(self, 
-                                 mileage: float, 
-                                 state: str) -> float:
-        """Calculate adjusted mileage based on state rules"""
-        if state not in self.state_rules:
-            raise BusinessRuleError(f"Invalid state: {state}")
+            # Validate region
+            valid_regions = ["West", "East", "North", "South"]
+            if data.get("region") not in valid_regions:
+                raise BusinessRuleError("Invalid region")
             
-        # Add state-specific adjustments here
-        return mileage
-    
-    def validate_workflow_requirements(self, 
-                                    project_data: Dict[str, Any], 
-                                    target_state: str) -> List[str]:
-        """Validate requirements for workflow state transition"""
-        requirements = []
-        
-        if target_state.lower() == 'active':
-            if not project_data.get('service_area'):
-                requirements.append("Service area is required")
-            if not project_data.get('mileage'):
-                requirements.append("Mileage is required")
-        
-        return requirements 
+            # Validate service area
+            service_area = data.get("service_area", {})
+            if service_area.get("state") not in ["CA", "OR", "WA"]:
+                raise BusinessRuleError("Invalid state")
+                
+            if not isinstance(service_area.get("mileage"), (int, float)) or service_area.get("mileage") <= 0:
+                raise BusinessRuleError("Invalid mileage")
+            
+            return True
+            
+        except BusinessRuleError:
+            raise
+        except Exception as e:
+            raise BusinessRuleError(f"Validation failed: {str(e)}")
