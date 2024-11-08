@@ -1,9 +1,49 @@
 from dotenv import load_dotenv
 import os
+from datetime import timedelta
 
 load_dotenv()
 
-class Config:
+class BaseConfig:
+    """Base configuration"""
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev_key')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Session config
+    SESSION_TYPE = 'redis'
+    PERMANENT_SESSION_LIFETIME = timedelta(days=1)
+    
+    # O365 config
+    O365_CLIENT_ID = os.getenv('O365_CLIENT_ID')
+    O365_CLIENT_SECRET = os.getenv('O365_CLIENT_SECRET')
+    
+    # Timer config
+    SCHEDULER_API_ENABLED = True
+    SCHEDULER_TIMEZONE = "UTC"
+
+class DevelopmentConfig(BaseConfig):
+    """Development configuration"""
+    DEBUG = True
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL',
+        'postgresql://localhost/app_dev'
+    )
+
+class TestingConfig(BaseConfig):
+    """Testing configuration"""
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'TEST_DATABASE_URL',
+        'postgresql://localhost/app_test'
+    )
+    
+    # Use memory for session in tests
+    SESSION_TYPE = 'filesystem'
+    
+    # Disable scheduler in tests
+    SCHEDULER_API_ENABLED = False
+
+class Config(BaseConfig):
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
     
     # Model configurations
@@ -23,7 +63,7 @@ class Config:
         MAX_PAGES = None  # Default to None if invalid value or not set
     
     # Report length settings
-    MAX_REPORT_SECTIONS = 2  # Set to None for all sections, or number for limit
+    MAX_REPORT_SECTIONS = None  # Set to None for all sections, or number for limit
     REPORT_SECTIONS = [
         "Executive Summary",
         "System Architecture",

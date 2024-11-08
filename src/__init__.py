@@ -1,5 +1,1 @@
-from .coordinator import SwarmCoordinator
-from .config import Config
-from .document_processor import DocumentProcessor
-
-__all__ = ["SwarmCoordinator", "Config", "DocumentProcessor"]
+# Empty file to make the directory a Python package

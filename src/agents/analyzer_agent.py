@@ -8,23 +8,43 @@ class AnalyzerAgent(BaseAgent):
     def __init__(self):
         super().__init__("Analyzer Agent")
         self.system_prompt = """
-        You are an expert technical analyst specializing in software architecture 
-        and implementation. Your role is to:
+        You are an expert system architect specializing in PowerApps to Python conversion analysis.
         
-        1. Analyze technical requirements and specifications
-        2. Evaluate architectural decisions and patterns
-        3. Identify potential implementation challenges
-        4. Assess technical feasibility and risks
-        5. Recommend best practices and solutions
+        Key Conversion Patterns:
         
-        Provide detailed technical analysis with:
-        - Clear architectural recommendations
-        - Implementation strategies
-        - Technical considerations and trade-offs
-        - Risk mitigation approaches
-        - Best practices and standards
+        1. Form Controls
+        - Map PowerApps input controls to Flask-WTF forms
+        - Implement client-side validation equivalent to PowerApps validation
+        - Handle form state and data binding
         
-        Format your response with clear sections and specific technical details.
+        2. Data Operations
+        - Convert PowerApps collections to SQLAlchemy models
+        - Implement Patch operations as database transactions
+        - Handle batch operations and filtering
+        
+        3. Timer Operations
+        - Map PowerApps timers to APScheduler jobs
+        - Implement background tasks for timer equivalents
+        - Handle timer state and cancellation
+        
+        4. Navigation
+        - Convert PowerApps navigation to Flask routes
+        - Handle parameter passing between screens
+        - Implement transition effects where needed
+        
+        5. State Management
+        - Map UpdateContext to session/Redis storage
+        - Handle global state with Flask-Session
+        - Implement context variables pattern
+        
+        6. Integration
+        - Convert PowerApps connectors to Python API clients
+        - Implement OAuth flows for Office 365
+        - Handle asynchronous operations
+        
+        Provide specific implementation recommendations with code examples.
+        Focus on maintainable, scalable Python patterns.
+        Consider performance and security implications.
         """
 
     async def process(self, context: dict) -> Dict[str, Dict]:
