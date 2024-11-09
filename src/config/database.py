@@ -3,22 +3,23 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from typing import Generator
 import os
+import pyodbc
 
 class DatabaseConfig:
     """SQL Server configuration"""
     
     # SQL Server connection details
-    SERVER = 'DESKTOP-PJTAP42'  # Remove SQLEXPRESS from server name
-    INSTANCE = 'SQLEXPRESS'     # Specify instance separately
-    DATABASE = 'ndar'
-    DRIVER = '{SQL Server}'     # Use exact driver name in braces
+    SERVER = os.getenv('DB_SERVER', 'DESKTOP-PJTAP42')  # Remove SQLEXPRESS from server name
+    INSTANCE = os.getenv('DB_INSTANCE', 'SQLEXPRESS')   # Separate instance name
+    DATABASE = os.getenv('DB_NAME', 'swarmrag')
+    DRIVER = os.getenv('DB_DRIVER', 'SQL Server')       # Use basic SQL Server driver name
     
     @classmethod
     def get_connection_string(cls) -> str:
         """Generate SQL Server connection string"""
-        server = f"{cls.SERVER}\\{cls.INSTANCE}"
+        server = f"{cls.SERVER}\\{cls.INSTANCE}" if cls.INSTANCE else cls.SERVER
         params = {
-            'DRIVER': cls.DRIVER,
+            'DRIVER': f"{{{cls.DRIVER}}}",  # Add curly braces around driver name
             'SERVER': server,
             'DATABASE': cls.DATABASE,
             'Trusted_Connection': 'yes',
@@ -29,38 +30,42 @@ class DatabaseConfig:
         return f"mssql+pyodbc:///?odbc_connect={quote_plus(connection_str)}"
 
     @classmethod
-    def get_pyodbc_string(cls) -> str:
-        """Get raw connection string for testing"""
-        server = f"{cls.SERVER}\\{cls.INSTANCE}"
-        return (
-            f"DRIVER={cls.DRIVER};"
-            f"SERVER={server};"
-            f"DATABASE={cls.DATABASE};"
-            f"Trusted_Connection=yes;"
-            f"TrustServerCertificate=yes"
-        )
+    def test_connection(cls) -> bool:
+        """Test the database connection"""
+        try:
+            server = f"{cls.SERVER}\\{cls.INSTANCE}" if cls.INSTANCE else cls.SERVER
+            conn_str = (
+                f"DRIVER={{{cls.DRIVER}}};"
+                f"SERVER={server};"
+                f"DATABASE={cls.DATABASE};"
+                f"Trusted_Connection=yes;"
+                f"TrustServerCertificate=yes"
+            )
+            print(f"Testing connection with string: {conn_str}")
+            conn = pyodbc.connect(conn_str, timeout=5)
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Connection test failed: {str(e)}")
+            return False
 
 class Config:
     """Application configuration"""
     SQLALCHEMY_DATABASE_URI = DatabaseConfig.get_connection_string()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': 10,
-        'max_overflow': 20,
+        'pool_size': 5,
+        'max_overflow': 10,
         'pool_timeout': 30,
         'pool_recycle': 1800
-    } 
-
-def get_db_url() -> str:
-    """Get database URL from environment or config"""
-    return os.getenv(
-        'DATABASE_URL',
-        'sqlite:///./test.db'  # Default to SQLite for testing
-    )
+    }
 
 def get_engine():
     """Create SQLAlchemy engine"""
-    return create_engine(get_db_url())
+    return create_engine(
+        DatabaseConfig.get_connection_string(),
+        **Config.SQLALCHEMY_ENGINE_OPTIONS
+    )
 
 def get_session() -> Generator:
     """Get database session"""

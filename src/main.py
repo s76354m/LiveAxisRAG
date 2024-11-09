@@ -13,6 +13,9 @@ from api.middleware.request_validator import RequestValidationMiddleware
 from api.middleware.rate_limiter import RateLimiter
 from api.middleware.auth_middleware import AuthMiddleware
 from api.middleware.logging_middleware import LoggingMiddleware
+from api.middleware.cors_middleware import CustomCORSMiddleware, CORSConfig
+from api.middleware.cache_middleware import CacheMiddleware
+from api.middleware.compression_middleware import CompressionMiddleware
 
 # Initialize configurations
 config = EnvironmentConfig()
@@ -156,6 +159,15 @@ async def main():
 if __name__ == "__main__":
     app = FastAPI()
 
+    # Configure CORS based on environment
+    cors_config = CORSConfig(
+        environment="development"  # Change to "production" for production environment
+    ).settings
+
+    # Setup CORS middleware
+    cors_middleware = CustomCORSMiddleware(**cors_config)
+    cors_middleware.setup_cors(app)
+
     # Register the error handler middleware
     app.middleware("http")(error_handler)
 
@@ -183,6 +195,24 @@ if __name__ == "__main__":
         app_name="SwarmRAG",
         log_request_body=True,
         log_response_body=True
+    )
+
+    # Register the cache middleware
+    app.add_middleware(
+        CacheMiddleware,
+        ttl=300,  # 5 minutes cache TTL
+        max_size=1000,  # Maximum cache entries
+        cache_by_auth=True,  # Cache separately for different users
+        cache_by_query=True  # Cache separately for different query parameters
+    )
+
+    # Register the compression middleware
+    app.add_middleware(
+        CompressionMiddleware,
+        minimum_size=500,  # Only compress responses larger than 500 bytes
+        compression_level=6,  # GZIP compression level
+        brotli_quality=4,  # Brotli compression quality
+        exclude_paths={"/health", "/metrics"}
     )
 
     asyncio.run(main())
