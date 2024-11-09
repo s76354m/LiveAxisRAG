@@ -6,8 +6,8 @@ class DatabaseError(ProjectError):
     """Database-related errors"""
     pass
 
-class ConfigurationError(ProjectError):
-    """Configuration-related errors"""
+class ConfigurationError(Exception):
+    """Raised when configuration errors occur"""
     pass
 
 class ValidationError(ProjectError):

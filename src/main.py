@@ -6,6 +6,18 @@ import logging
 import time
 from datetime import datetime
 from typing import Dict
+from src.config import EnvironmentConfig, DatabaseManager, LoggerConfig
+from fastapi import FastAPI
+from api.middleware.error_handler import error_handler
+from api.middleware.request_validator import RequestValidationMiddleware
+from api.middleware.rate_limiter import RateLimiter
+from api.middleware.auth_middleware import AuthMiddleware
+from api.middleware.logging_middleware import LoggingMiddleware
+
+# Initialize configurations
+config = EnvironmentConfig()
+logger = LoggerConfig()
+db = DatabaseManager(config.get_database_url())
 
 # Configure logging
 logging.basicConfig(
@@ -142,4 +154,35 @@ async def main():
         logger.error(f"Error during processing: {str(e)}", exc_info=True)
 
 if __name__ == "__main__":
+    app = FastAPI()
+
+    # Register the error handler middleware
+    app.middleware("http")(error_handler)
+
+    # Register the request validation middleware
+    app.add_middleware(RequestValidationMiddleware)
+
+    # Register the rate limiter middleware with custom settings
+    app.add_middleware(
+        RateLimiter,
+        requests_per_minute=60,  # Adjust these values based on your needs
+        burst_limit=100,
+        expire_time=60
+    )
+
+    # Register the auth middleware
+    app.add_middleware(
+        AuthMiddleware,
+        secret_key="your-secret-key-here",  # Should be loaded from environment variables
+        exclude_paths={"/docs", "/redoc", "/openapi.json", "/health", "/api/v1/auth/login"}
+    )
+
+    # Register the logging middleware
+    app.add_middleware(
+        LoggingMiddleware,
+        app_name="SwarmRAG",
+        log_request_body=True,
+        log_response_body=True
+    )
+
     asyncio.run(main())

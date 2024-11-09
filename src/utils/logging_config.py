@@ -1,8 +1,9 @@
 import logging
 import logging.handlers
+from pathlib import Path
+from typing import Optional
 import json
 from datetime import datetime
-from pathlib import Path
 
 class StructuredLogger:
     def __init__(self, name: str):
